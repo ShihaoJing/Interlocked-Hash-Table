@@ -3,13 +3,14 @@
 //
 
 #include <iostream>
+#include <string>
 #include "map.h"
 
 int main() {
-  Map<int, int> m;
-  m.Insert(1, 123);
-  m.Remove(1);
-  auto p = m.Lookup(1);
+  Map<std::string, int> m;
+  m.Insert("abc", 123);
+  //m.Remove("abc");
+  auto p = m.Lookup("abc");
   if (p.first)
     std::cout << *p.second << std::endl;
   else
