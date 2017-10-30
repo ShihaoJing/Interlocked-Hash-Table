@@ -25,7 +25,7 @@ void error_print()
 template <typename A, typename ...Args>
 void error_print(const A& a, Args...args)
 {
-  cerr<<a;
+  cerr << a;
   error_print(args...);
 }
 
@@ -54,10 +54,55 @@ void fail(Args...args) { error_print(args...);failed__ = true; }
 
 TEST(IntegralKey)
 {
-  Map<int, int> map;
-  map.Insert(1, 123);
-  auto p = map.Lookup(1);
-  ASSERT_EQUAL(*p.first, 1);
+  {
+    Map<int, int> map;
+    map.Insert(1, 123);
+    auto p = map.Lookup(1);
+    ASSERT_EQUAL(*p.first, 1);
+    ASSERT_EQUAL(*p.second, 123);
+  }
+
+  {
+    Map<int, int> map;
+    auto p = map.Lookup(1);
+    ASSERT_EQUAL(p.first, NULL);
+    ASSERT_EQUAL(p.second, NULL);
+  }
+
+  {
+    Map<int, int> map;
+    map.Insert(1, 123);
+    map.Remove(1);
+    auto p = map.Lookup(1);
+    ASSERT_EQUAL(p.first, NULL);
+    ASSERT_EQUAL(p.second, NULL);
+  }
+
+  {
+    Map<int, int> m;
+    for (int i = 0; i < 1000; ++i) {
+      m.Insert(i, i);
+    }
+
+    for (int j = 0; j < 1000; ++j) {
+      auto p = m.Lookup(j);
+      ASSERT_EQUAL(*p.first, j);
+      ASSERT_EQUAL(*p.second, j);
+    }
+  }
+}
+
+TEST(TwoThread)
+{
+
+}
+
+DISABLE_TEST(StringKey)
+{
+  Map<string, int> map;
+  map.Insert("abc", 123);
+  auto p = map.Lookup("abc");
+  ASSERT_EQUAL(*p.first, "abc");
   ASSERT_EQUAL(*p.second, 123);
 }
 
@@ -78,6 +123,7 @@ int main()
       failed = true;
     }
   }
-  cerr << endl;
+  if (!failed)
+    cerr << "Congrats! All Test Cases passed.";
   return failed ? -1 : 0;
 }

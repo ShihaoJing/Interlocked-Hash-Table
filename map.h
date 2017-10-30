@@ -98,7 +98,7 @@ Map<Key, T>::GetElist(listptr map, key_type key)
         if (cur->lock == p_inner) {
           auto p = EToP(next, p_inner);
           if (backPath(p, map) == DEPTH) {
-            p->lock = p_lock;
+            p->lock = p_term;
             l = p;
           }
           p->idx = idx;
@@ -108,7 +108,7 @@ Map<Key, T>::GetElist(listptr map, key_type key)
         else {
           auto p = PToBiggerP(cur);
           cur->lock = GARBAGE;
-          std::atomic_store(&cur->parent->buckets[cur->idx], p);
+          std::atomic_store(&(cur->parent->buckets[cur->idx]), p);
           cur = p;
         }
       }
@@ -195,15 +195,50 @@ std::shared_ptr<ListNode<Key, T>> Map<Key, T>::EToP(listptr next, int l) {
 
 template <typename Key, typename T>
 std::shared_ptr<ListNode<Key, T>> Map<Key, T>::PToBiggerP(listptr cur) {
-  listptr p = std::make_shared<ListNode<Key, T>>(p_lock, cur->size * 2, cur->parent, cur->idx);
+  size_t new_size = cur->size;
+  listptr p;
   //rehash old to new
-  for (int i = 0; i < cur->size; ++i) {
-    if (cur->buckets[i]) {
-      auto elist = cur->buckets[i];
-      for (int j = 0; j < elist->count; ++j) {
-        Insert(p, elist->keys[j], elist->values[j]);
+  bool done = false;
+  while (!done) {
+    new_size *= 2;
+    p = std::make_shared<ListNode<Key, T>>(p_term, new_size, cur->parent, cur->idx);
+    int i = 0;
+    for (; i < cur->size; ++i) {
+      if (cur->buckets[i]) {
+        auto elist = cur->buckets[i];
+        bool complete = true;
+        for (int j = 0; j < elist->count; ++j) {
+          key_type &key = elist->keys[j];
+          mapped_type &value = elist->values[j];
+          size_t idx = p->hash(key) % p->size;
+          // Elementlist
+          listptr next = p->buckets[idx];
+          if (next == nullptr) {
+            //on nil bucket, insert new ElementList
+            next = std::make_shared<ListNode<Key, T>>(e_avail, PINIT, p, idx);
+            next->keys[next->count] = key;
+            next->values[next->count] = value;
+            ++next->count;
+            // install new ElementList
+            p->buckets[idx] = next;
+          }
+          else if (next->count < EMAX) {
+            next->keys[next->count] = key;
+            next->values[next->count] = value;
+            ++next->count;
+          }
+          else {
+            // ElementList is full, keep doubling parent's PointList's size
+            complete = false;
+            break;
+          }
+        }
+        if (!complete)
+          break;
       }
     }
+    if (i == cur->size)
+      done = true;
   }
 
   return p;
