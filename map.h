@@ -20,7 +20,6 @@ private:
   std::pair<listptr, listptr>
   GetElist(listptr map, key_type key);
 
-
   // Insert a (key, val) to map, or update value if key already exists
   void Insert(listptr map, key_type key, mapped_type value);
 
@@ -57,7 +56,6 @@ Map<Key, T>::GetElist(listptr map, key_type key)
   listptr found, l;
   listptr cur = map;
   while (true) {
-    uint32_t hash_value = cur->hash(key);
     size_t idx = cur->hash(key) % cur->size;
     listptr next = cur->buckets[idx];
     if (next == nullptr) {

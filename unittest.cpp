@@ -4,6 +4,7 @@
 
 #include <iostream>
 #include <string>
+#include <thread>
 #include "map.h"
 
 using namespace std;
@@ -92,9 +93,25 @@ TEST(IntegralKey)
   }
 }
 
+
+
 TEST(TwoThread)
 {
-
+  Map<int, int> m;
+  auto do_work = [&m](int start, int end) {
+    for (int i = start; i <= end; ++i) {
+      m.Insert(i, i);
+    }
+    for (int i = start; i <= end; ++i) {
+      auto p = m.Lookup(i);
+      ASSERT_EQUAL(*p.first, i);
+      ASSERT_EQUAL(*p.second, i);
+    }
+  };
+  std::thread t1(do_work, 0, 500);
+  std::thread t2(do_work, 501, 1000);
+  t1.join();
+  t2.join();
 }
 
 DISABLE_TEST(StringKey)
