@@ -21,33 +21,35 @@
 #define PINIT 4
 
 #include "MurmurHash3.h"
+#include <atomic>
 
-template <typename Key, typename T>
+struct item {
+  int key;
+  int value;
+};
+
 struct ListNode {
-  using key_type = Key;
-  using mapped_type = T;
-  // common fields
   std::atomic_int lock;
-  std::shared_ptr<ListNode> parent;
-  size_t idx; // index in parent's buckets
-  // fields of PointList
-  size_t size;
-  uint32_t hashkey;
-  std::vector<std::shared_ptr<ListNode>> buckets;
-  // fields of ElementLists
-  size_t count;
-  key_type keys[EMAX];
-  mapped_type values[EMAX];
+  ListNode* parent = nullptr;
+  int idx = -1; // index in parent's buckets
+  int size = 0; // capacity of buckets
+  int hashkey;
+  std::atomic<ListNode*> *buckets = nullptr;
+  size_t count = 0; /* Number of Element Lists*/
+  item* items[EMAX];
 
-  ListNode() : lock(p_inner), parent(nullptr), size(PINIT), buckets(size), count(0), hashkey(rand()) { }
+  explicit ListNode(int hk) : hashkey(hk) {}
 
-  ListNode(int l, size_t s, std::shared_ptr<ListNode> par, size_t i = -1)
-      : lock(l), size(s), parent(par), idx(i), buckets(size), count(0), hashkey(rand()) { }
+  explicit ListNode(int size_, int hk) : hashkey(hk), size(size_), buckets(new std::atomic<ListNode*>[size_]) {
+    for (int i = 0; i < size; ++i) {
+      buckets[i] = nullptr;
+    }
+  }
 
-  uint32_t hash(key_type key) {
-    uint32_t out;
-    MurmurHash3_x86_32(&key, sizeof(key), hashkey, &out);
-    return out;
+  uint32_t hash(int key) {
+    uint32_t hv;
+    MurmurHash3_x64_128(&key, sizeof(int), hashkey, &hv);
+    return hv;
   }
 
   void release() {
