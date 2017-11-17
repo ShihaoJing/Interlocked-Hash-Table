@@ -26,6 +26,7 @@
 struct item {
   int key;
   int value;
+  item *next = nullptr;
 };
 
 struct ListNode {

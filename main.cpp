@@ -2,10 +2,10 @@
 // Created by Shihao Jing on 10/28/17.
 //
 
+#include "map.h"
+#include "map_linked.h"
 #include <iostream>
 #include <string>
-#include "map.h"
-#include "type.h"
 #include <chrono>
 #include <thread>
 #include <algorithm>
@@ -14,9 +14,9 @@
 
 using namespace std;
 int main() {
-  Map map;
-  int nthreads = 8;
-  int ops = 10000;
+  map_linked map;
+  int nthreads = 2;
+  int ops = 10000000;
   int ratio = 60;
 
   auto do_work = [&]() {
@@ -24,6 +24,7 @@ int main() {
     default_random_engine e(rd());
     uniform_int_distribution<int> re(0, INT32_MAX);
     for (int i = 0; i < ops; ++i) {
+      printf("%d\n", i);
       int key = re(e);
       item *it = new item;
       it->key = key;
