@@ -30,7 +30,8 @@ void help(char *progname) {
 }
 
 template <typename set_t>
-void bench(unsigned keyrange, unsigned iters, unsigned hashpower, unsigned ratio, unsigned nthreads) {
+void bench(unsigned keyrange, unsigned iters, unsigned hashpower, unsigned ratio_lookup, unsigned ratio_insert,
+           unsigned nthreads) {
   using std::cout;
   using std::cerr;
   using std::endl;
@@ -54,13 +55,18 @@ void bench(unsigned keyrange, unsigned iters, unsigned hashpower, unsigned ratio
     for (int i = 0; i < iters; ++i) {
       int key = key_rand(e);
       int action = ratio_rand(e);
-      if (action <= ratio) {
-        //set.insert(key);
+      if (action <= ratio_lookup) {
+        try {
+          my_set.find(key);
+        } catch (exception &e) {
+
+        }
+      }
+      else if (action <= ratio_lookup + ratio_insert) {
         if (my_set.insert(key))
           ++inserted[tid];
       }
       else {
-        //set.erase(key);
         if (my_set.erase(key))
           ++removed[tid];
       }
@@ -116,19 +122,21 @@ int main(int argc, char** argv) {
   unsigned keyrange = 256;
   unsigned ops      = 1000;
   unsigned hashpower  = 16;
-  unsigned ratio    = 60;
+  unsigned ratio_lookup = 60;
+  unsigned ratio_insert = 20;
   unsigned threads  = 8;
   char     test     = 'l';
   char     prob     = 'L';
 
   // parse the command-line options.  see help() for more info
-  while ((opt = getopt(argc, argv, "hr:o:c:R:m:n:t:p:")) != -1) {
+  while ((opt = getopt(argc, argv, "hr:o:c:L:I:m:n:t:p:")) != -1) {
     switch(opt) {
       case 'h': help(argv[0]);           return 0;
       case 'r': keyrange = atoi(optarg); break;
       case 'o': ops      = atoi(optarg); break;
       case 'c': hashpower  = atoi(optarg); break;
-      case 'R': ratio    = atoi(optarg); break;
+      case 'L': ratio_lookup = atoi(optarg); break;
+      case 'I': ratio_insert = atoi(optarg); break;
       case 't': threads  = atoi(optarg); break;
       case 'm': test = optarg[0];        break;
     }
@@ -139,7 +147,7 @@ int main(int argc, char** argv) {
   cout << "  key range:            " << keyrange << endl;
   cout << "  ops/thread:           " << ops << endl;
   cout << "  hashpower:            " << hashpower << endl;
-  cout << "  lookup/remove:        " << ratio << "/" << (100 - ratio) << endl;
+  cout << "  lookup/insert/remove: " << ratio_lookup << "/" << ratio_insert << "/" << (100 - ratio_lookup - ratio_insert) << endl;
   cout << "  threads:              " << threads << endl;
   cout << "  test name:            " << test << endl;
   cout << "  prob:                 " << prob << endl;
@@ -147,9 +155,9 @@ int main(int argc, char** argv) {
 
   // run the microbenchmark
   if (test == 'i') {
-    bench<Map<int>>(keyrange, ops, hashpower, ratio, threads);
+    bench<Map<int>>(keyrange, ops, hashpower, ratio_lookup,ratio_insert, threads);
   }
   else if (test == 'l') {
-    bench<cuckoohash_map<int, int>>(keyrange, ops, hashpower, ratio, threads);
+    bench<cuckoohash_map<int, int>>(keyrange, ops, hashpower, ratio_lookup, ratio_insert, threads);
   }
 }
