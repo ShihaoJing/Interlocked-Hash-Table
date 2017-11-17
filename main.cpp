@@ -4,6 +4,7 @@
 
 #include "map.h"
 #include "map_linked.h"
+#include "libcuckoo/cuckoohash_map.hh"
 #include <iostream>
 #include <string>
 #include <chrono>
@@ -19,12 +20,12 @@ void help(char *progname) {
   using std::endl;
   cout << "Usage: " << progname << " [OPTIONS]" << endl;
   cout << "Execute a concurrent set microbenchmark" << endl;
-  cout << "  -k    key range for elements in the list" << endl;
+  cout << "  -r    key range for elements in the list" << endl;
   cout << "  -o    operations per thread" << endl;
-  cout << "  -b    # buckets for hash tests" << endl;
+  cout << "  -c    # buckets for hash tests" << endl;
   cout << "  -r    ratio of lookup operations" << endl;
   cout << "  -t    number of threads" << endl;
-  cout << "  -n    test name" << endl;
+  cout << "  -m    test name" << endl;
   cout << "        [l]ist, [r]wlist, [h]ash, [s]entinel hash" << endl;
 }
 
@@ -53,16 +54,14 @@ void bench(unsigned keyrange, unsigned iters, unsigned hashpower, unsigned ratio
     for (int i = 0; i < iters; ++i) {
       int key = key_rand(e);
       int action = ratio_rand(e);
-      item *it = new item;
-      it->key = key;
       if (action <= ratio) {
         //set.insert(key);
-        if (my_set.insert(it))
+        if (my_set.insert(key))
           ++inserted[tid];
       }
       else {
         //set.erase(key);
-        if (my_set.remove(key))
+        if (my_set.erase(key))
           ++removed[tid];
       }
     }
@@ -119,7 +118,7 @@ int main(int argc, char** argv) {
   unsigned hashpower  = 16;
   unsigned ratio    = 60;
   unsigned threads  = 8;
-  char     test     = 's';
+  char     test     = 'l';
   char     prob     = 'L';
 
   // parse the command-line options.  see help() for more info
@@ -140,17 +139,17 @@ int main(int argc, char** argv) {
   cout << "  key range:            " << keyrange << endl;
   cout << "  ops/thread:           " << ops << endl;
   cout << "  hashpower:            " << hashpower << endl;
-  cout << "  insert/remove:        " << ratio << "/" << (100 - ratio) << endl;
+  cout << "  lookup/remove:        " << ratio << "/" << (100 - ratio) << endl;
   cout << "  threads:              " << threads << endl;
   cout << "  test name:            " << test << endl;
   cout << "  prob:                 " << prob << endl;
   cout << endl;
 
   // run the microbenchmark
-  if (test == 's') {
-    bench<Map>(keyrange, ops, hashpower, ratio, threads);
+  if (test == 'i') {
+    bench<Map<int>>(keyrange, ops, hashpower, ratio, threads);
   }
-  else if (test == 'k') {
-    bench<map_linked>(keyrange, ops, hashpower, ratio, threads);
+  else if (test == 'l') {
+    bench<cuckoohash_map<int, int>>(keyrange, ops, hashpower, ratio, threads);
   }
 }

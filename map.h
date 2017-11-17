@@ -17,33 +17,35 @@ random_device rd;
 default_random_engine e(rd());
 uniform_int_distribution<int> re(0, INT32_MAX);
 
+template <typename T>
 class Map {
+  typedef ListNode<T>* nptr;
 private:
   std::mutex count_lock;
   size_t count;
-  ListNode* root;
+  nptr root;
 
-  int backPath(ListNode *p) {
+  int backPath(nptr p) {
     if (p == root)
       return 0;
     return 1 + backPath(p->parent);
   }
 
-  ListNode* EToP(ListNode *elist) {
-    ListNode *p = new ListNode(PINIT, re(e));
+  nptr EToP(nptr elist) {
+    nptr p = new ListNode<T>(PINIT, re(e));
     p->lock = p_inner;
     p->idx = elist->idx;
     p->parent = elist->parent;
 
     for (int i = 0; i < elist->count; ++i) {
-      item *it = elist->items[i];
-      uint32_t hv = p->hash(it->key);
+      T it = elist->items[i];
+      uint32_t hv = p->hash(it);
       int idx = hv % p->size;
       // Elementlist
-      ListNode *next = p->buckets[idx];
+      nptr next = p->buckets[idx];
       if (next == nullptr) {
         //on nil bucket, insert new ElementList
-        next = new ListNode(re(e));
+        next = new ListNode<T>(re(e));
         next->lock = e_avail;
         next->idx = idx;
         next->parent = p;
@@ -63,13 +65,13 @@ private:
     return p;
   }
 
-  ListNode* PToBiggerP(ListNode *cur) {
+  nptr PToBiggerP(nptr cur) {
     int new_size = cur->size;
-    ListNode *p = nullptr;
+    nptr p = nullptr;
     bool done = false;
     while (!done) {
       new_size *= 2;
-      p = new ListNode(new_size, re(e));
+      p = new ListNode<T>(new_size, re(e));
       p->lock = p_term;
       p->idx = cur->idx;
       p->parent = cur->parent;
@@ -77,17 +79,17 @@ private:
       int i = 0;
       for (; i < cur->size; ++i) {
         if (cur->buckets[i] != nullptr) {
-          ListNode *elist = cur->buckets[i];
+          nptr elist = cur->buckets[i];
           bool complete = true;
           for (int j = 0; j < elist->count; ++j) {
-            item *it = elist->items[j];
-            uint32_t hv = p->hash(it->key);
+            T it = elist->items[j];
+            uint32_t hv = p->hash(it);
             int idx = hv % p->size;
             // Elementlist
-            ListNode *next = p->buckets[idx];
+            nptr next = p->buckets[idx];
             if (next == nullptr) {
               //on nil bucket, insert new ElementList
-              next = new ListNode(re(e));
+              next = new ListNode<T>(re(e));
               next->lock = e_avail;
               next->parent = p;
               next->idx = idx;
@@ -118,16 +120,16 @@ private:
   }
 
 
-  ListNode* getList(const int &key) {
-    ListNode *l = nullptr;
-    ListNode *cur = root;
+  nptr getList(const T &key) {
+    nptr l = nullptr;
+    nptr cur = root;
     while (true) {
       uint32_t hv = cur->hash(key);
       int idx = hv % cur->size;
-      ListNode *next = cur->buckets[idx];
+      nptr next = cur->buckets[idx];
       if (next == nullptr) {
         // Allocate a Element List
-        ListNode *new_ele_list = new ListNode(re(e));
+        nptr new_ele_list = new ListNode<T>(re(e));
         new_ele_list->lock = e_avail;
         new_ele_list->parent = cur;
         new_ele_list->idx = idx;
@@ -137,7 +139,7 @@ private:
           l = new_ele_list;
         }
 
-        ListNode *null = nullptr;
+        nptr null = nullptr;
         if (cur->buckets[idx].compare_exchange_strong(null, new_ele_list)) {
           return l;
         }
@@ -161,13 +163,13 @@ private:
             return l;
           }
           for (int i = 0; i < next->count; ++i) {
-            if (next->items[i]->key == key) {
+            if (next->items[i] == key) {
               return l;
             }
           }
 
           if (cur->lock == p_inner) {
-            ListNode *p = EToP(next);
+            nptr p = EToP(next);
 
             //printf("backPath called\n");
             int depth = backPath(p);
@@ -182,7 +184,7 @@ private:
           }
           else {
             // resize locked PointerList
-            ListNode *p = PToBiggerP(cur);
+            nptr p = PToBiggerP(cur);
             p->lock = p_lock;
             l = p;
             p->parent->buckets[p->idx].store(p);
@@ -194,11 +196,11 @@ private:
     }
   }
 
-  ListNode* getList_nolock(const int &key) {
-    ListNode *cur = root;
+  nptr getList_nolock(const T &key) {
+    nptr cur = root;
     while (true) {
       uint32_t hv = cur->hash(key);
-      ListNode *next = cur->buckets[hv % cur->size];
+      nptr next = cur->buckets[hv % cur->size];
       if (next->lock == e_lock || next->lock == e_avail) {
         return next;
       }
@@ -210,21 +212,21 @@ private:
 
 
 public:
-  Map() : root(new ListNode(PINIT, re(e))), count(0) { root->lock = p_inner; }
+  Map() : root(new ListNode<T>(PINIT, re(e))), count(0) { root->lock = p_inner; }
 
-  ListNode* acquire(int key) {
+  nptr acquire(int key) {
     return getList(key);
   }
 
-  void release(ListNode *lock) {
+  void release(nptr lock) {
     lock->release();
   }
 
-  item* find(int key) {
-    item *it = nullptr;
-    ListNode *elist = getList_nolock(key);
+  T find(T key) {
+    T it;
+    nptr elist = getList_nolock(key);
     for (int i = 0; i < elist->count; ++i) {
-      if (elist->items[i]->key == key)
+      if (elist->items[i] == key)
       {
         it = elist->items[i];
         break;
@@ -238,11 +240,11 @@ public:
     elist->items[elist->count++] = it;
   }*/
 
-  bool insert(item* it) {
-    ListNode *lock = getList(it->key);
-    ListNode *elist = getList_nolock(it->key);
+  bool insert(T it) {
+    nptr lock = getList(it);
+    nptr elist = getList_nolock(it);
     for (int i = 0; i < elist->count; ++i) {
-      if (elist->items[i]->key == it->key) /* item already exist */
+      if (elist->items[i] == it) /* item already exist */
       {
         lock->release();
         return false;
@@ -256,11 +258,11 @@ public:
     return true;
   }
 
-  bool remove(int key) {
-    ListNode *lock = getList(key);
-    ListNode *elist = getList_nolock(key);
+  bool erase(T key) {
+    nptr lock = getList(key);
+    nptr elist = getList_nolock(key);
     for (int i = 0; i < elist->count; ++i) {
-      if (elist->items[i]->key == key)
+      if (elist->items[i] == key)
       {
         count_lock.lock();
         --count;

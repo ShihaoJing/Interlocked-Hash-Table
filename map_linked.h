@@ -9,14 +9,15 @@
 #include <atomic>
 #include <mutex>
 
-#define hashsize(n) ((size_t)1<<(n))
-#define hashmask(n) (n-1)
+#define HASHSIZE(n) ((size_t)1<<(n))
+#define HASHMASK(n) (n-1)
 
 #define DEFAULT_LOCK_CAP 16
 #define DEFAULT_CAP 16
 
 using namespace std;
 
+template <typename T>
 class map_linked {
   size_t capacity;
   size_t lock_capacity;
@@ -34,17 +35,17 @@ class map_linked {
 
   void acquire(int key) {
     uint32_t hv = hash(key);
-    locks[hv & hashmask(lock_capacity)].lock();
+    locks[hv & HASHMASK(lock_capacity)].lock();
   }
 
   void release(int key) {
     uint32_t hv = hash(key);
-    locks[hv & hashmask(lock_capacity)].unlock();
+    locks[hv & HASHMASK(lock_capacity)].unlock();
   }
 
   void insert_nolock(item *it) {
     uint32_t hv = hash(it->key);
-    size_t idx = hv & hashmask(capacity);
+    size_t idx = hv & HASHMASK(capacity);
 
     item *sentinel = buckets[idx];
     item *cur = sentinel;
@@ -97,9 +98,9 @@ class map_linked {
 public:
 
   map_linked(int hashpower = DEFAULT_CAP,
-             int lock_hashpower = DEFAULT_LOCK_CAP) : capacity(hashsize(hashpower)), lock_capacity(hashsize(lock_hashpower)),
-                                                      buckets(new item*[hashsize(hashpower)]),
-                                                      locks(new mutex[hashsize(lock_hashpower)]),
+             int lock_hashpower = DEFAULT_LOCK_CAP) : capacity(HASHSIZE(hashpower)), lock_capacity(HASHSIZE(lock_hashpower)),
+                                                      buckets(new item*[HASHSIZE(hashpower)]),
+                                                      locks(new mutex[HASHSIZE(lock_hashpower)]),
                                                       count(0)
   {
     for (int i = 0; i < capacity; ++i) {
@@ -111,7 +112,7 @@ public:
     acquire(it->key);
 
     uint32_t hv = hash(it->key);
-    int idx = hv & hashmask(capacity);
+    int idx = hv & HASHMASK(capacity);
 
     item *sentinel = buckets[idx];
     item *cur = sentinel;
@@ -136,11 +137,11 @@ public:
     return true;
   }
 
-  bool remove(int key) {
+  bool erase(int key) {
     acquire(key);
 
     uint32_t hv = hash(key);
-    int idx = hv & hashmask(capacity);
+    int idx = hv & HASHMASK(capacity);
 
     item *sentinel = buckets[idx];
     item *cur = sentinel;

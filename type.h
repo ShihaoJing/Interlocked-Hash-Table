@@ -29,6 +29,7 @@ struct item {
   item *next = nullptr;
 };
 
+template <typename T>
 struct ListNode {
   std::atomic_int lock;
   ListNode* parent = nullptr;
@@ -37,7 +38,7 @@ struct ListNode {
   int hashkey;
   std::atomic<ListNode*> *buckets = nullptr;
   size_t count = 0; /* Number of Element Lists*/
-  item* items[EMAX];
+  T items[EMAX];
 
   explicit ListNode(int hk) : hashkey(hk) {}
 
@@ -47,9 +48,9 @@ struct ListNode {
     }
   }
 
-  uint32_t hash(int key) {
+  uint32_t hash(T key) {
     uint32_t hv;
-    MurmurHash3_x64_128(&key, sizeof(int), hashkey, &hv);
+    MurmurHash3_x64_128(&key, sizeof(T), hashkey, &hv);
     return hv;
   }
 
