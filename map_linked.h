@@ -161,6 +161,10 @@ public:
     return false;
   }
 
+  size_t size() {
+    return count;
+  }
+
 };
 
 #endif //PARALLEL_CONCURRENCY_MAP_LINKED_H

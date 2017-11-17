@@ -19,6 +19,8 @@ uniform_int_distribution<int> re(0, INT32_MAX);
 
 class Map {
 private:
+  std::mutex count_lock;
+  size_t count;
   ListNode* root;
 
   int backPath(ListNode *p) {
@@ -208,7 +210,7 @@ private:
 
 
 public:
-  Map() : root(new ListNode(PINIT, re(e))) { root->lock = p_inner; }
+  Map() : root(new ListNode(PINIT, re(e))), count(0) { root->lock = p_inner; }
 
   ListNode* acquire(int key) {
     return getList(key);
@@ -246,6 +248,9 @@ public:
         return false;
       }
     }
+    count_lock.lock();
+    ++count;
+    count_lock.unlock();
     elist->items[elist->count++] = it;
     lock->release();
     return true;
@@ -257,6 +262,9 @@ public:
     for (int i = 0; i < elist->count; ++i) {
       if (elist->items[i]->key == key)
       {
+        count_lock.lock();
+        --count;
+        count_lock.unlock();
         elist->items[i] = elist->items[--elist->count];
         lock->release();
         return true;
@@ -264,6 +272,10 @@ public:
     }
     lock->release();
     return false;
+  }
+
+  size_t size() {
+    return count;
   }
 
 };
