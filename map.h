@@ -224,6 +224,7 @@ public:
 
   T find(T key) {
     T it;
+    nptr lock = getList(key);
     nptr elist = getList_nolock(key);
     for (int i = 0; i < elist->count; ++i) {
       if (elist->items[i] == key)
@@ -232,6 +233,7 @@ public:
         break;
       }
     }
+    lock->release();
     return it;
   }
 

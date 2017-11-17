@@ -124,8 +124,8 @@ int main(int argc, char** argv) {
   unsigned hashpower  = 16;
   unsigned ratio_lookup = 60;
   unsigned ratio_insert = 20;
-  unsigned threads  = 8;
-  char     test     = 'l';
+  unsigned threads  = 1;
+  char     test     = 'i';
   char     prob     = 'L';
 
   // parse the command-line options.  see help() for more info
